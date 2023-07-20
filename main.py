@@ -103,7 +103,7 @@ class Board:
         result = "┌──" + "───"*(self.width-2) + "──┐\n" + result
         return result
     
-BOT = True
+BOT = False
 
 def get_bot_response(board: Board, bot_piece: str) -> str:
     legal = [x for x in range(board.width)]
@@ -120,8 +120,8 @@ def get_bot_response(board: Board, bot_piece: str) -> str:
 
 def game():
     board = Board()
-    p1 = "o"
-    p2 = "x"
+    p1 = "□"
+    p2 = "■"
     win = False
     change_turn = False
     turn = p1
