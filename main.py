@@ -1,5 +1,6 @@
 """Connect 4 implementation in python, command line."""
 import random
+import sys
 
 class Board:
     def __init__(self, width: int = 7, height: int = 6):
@@ -91,7 +92,7 @@ class Board:
         result = self.get_piece_at(pos, vert)
         return result if result is not None else " "
     def to_string(self) -> str:
-        result = "│" + "  ".join([str(x) for x in range(0, self.width)]) + "│"
+        result = "│" + "▕▎".join([str(x) for x in range(0, self.width)]) + "│"
         result = "├──" + "───"*(self.width-2) + "──┤\n" + result
         for y in range(self.height):
             line = ""
@@ -99,8 +100,11 @@ class Board:
                 line += self.get_piece_string(x, y)
                 if x < self.width - 1:
                     line += "  "
-            result = "│" + line + "│\n" + result
+            result = "│" + line + f"│ {y}\n" + result
+            
         result = "┌──" + "───"*(self.width-2) + "──┐\n" + result
+        result = f"To win, must get {self.win_length} in a row.\n\n" + result
+        result += "\n└──" + "───"*(self.width-2) + "──┘"
         return result
     
 BOT = False
@@ -115,10 +119,9 @@ def get_bot_response(board: Board, bot_piece: str) -> str:
             break
         choice = random.choice(legal)
     return str(choice)
-        
     
 
-def game():
+def game(win_length: int, width: int, height: int):
     board = Board()
     p1 = "□"
     p2 = "■"
@@ -127,7 +130,7 @@ def game():
     turn = p1
     while not win:
         change_turn = False
-        print(board.to_string())
+        print("\n" + board.to_string())
         print(f"It is '{turn}'s turn.")
         print("Type the number of the column to play in.")
         if BOT and turn == p2:
@@ -150,4 +153,20 @@ def game():
     print(board.to_string())
     print(f"{turn} won the game!")
 
-game()
+# python main.py <connect X> <width> <height>
+# Default: python main.py 4 7 6
+if __name__ == "__main__":
+    if len(sys.argv) not in [1, 4]:
+        print("Usage: python main.py <connect X> <width> <height>")
+        print("Default params: python main.py 4 7 6")
+        quit()
+    if len(sys.argv) == 1:
+        game(4, 7, 6)
+    if len(sys.argv) == 4:
+        try:
+            win_length = int(sys.argv[1])
+            width = int(sys.argv[2])
+            height = int(sys.argv[3])
+            game(win_length, width, height)
+        except:
+            print("All arguments must be integers!")
