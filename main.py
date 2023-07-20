@@ -3,11 +3,11 @@ import random
 import sys
 
 class Board:
-    def __init__(self, width: int = 7, height: int = 6):
+    def __init__(self, win_length: int = 4, width: int = 7, height: int = 6):
         self.board: list[list[str]] = [[] for _ in range(width)]
         self.width = width
         self.height = height
-        self.win_length = 4
+        self.win_length = win_length
     def in_width(self, pos: int) -> bool:
         return 0 <= pos < self.width
     def in_height(self, pos: int) -> bool:
@@ -122,7 +122,7 @@ def get_bot_response(board: Board, bot_piece: str) -> str:
     
 
 def game(win_length: int, width: int, height: int):
-    board = Board()
+    board = Board(win_length, width, height)
     p1 = "□"
     p2 = "■"
     win = False
