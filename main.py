@@ -7,6 +7,7 @@ import typing
 class Board:
     def __init__(self, win_length: int = 4, width: int = 7, height: int = 6):
         self.board: list[list[str]] = [[] for _ in range(width)]
+        self.history = ""
         self.width = width
         self.height = height
         self.win_length = win_length
@@ -17,6 +18,7 @@ class Board:
         self.turn = self.p2 if self.turn == self.p1 else self.p1
     def copy(self):
         new_board = Board(self.win_length, self.width, self.height)
+        new_board.history = self.history
         new_board.board = copy.deepcopy(self.board)
         return new_board
     def in_width(self, pos: int) -> bool:
@@ -29,6 +31,7 @@ class Board:
         """Returns true if successful, false if not successful."""
         if self.in_board(pos):
             self.board[pos].append(piece)
+            self.history += str(pos)
             return True
         else:
             return False
@@ -206,9 +209,6 @@ def get_best_move(board: Board) -> int:
     tree = BoardTreeNode(board)
     tree.populate()
     return tree.get_best_pos()
-            
-    
-BOT = True
 
 def get_bot_response(board: Board, bot_piece: str) -> str:
     legal = [x for x in range(board.width)]
@@ -220,10 +220,12 @@ def get_bot_response(board: Board, bot_piece: str) -> str:
             break
         choice = random.choice(legal)
     return str(choice)
-    
 
-def game(win_length: int, width: int, height: int):
+BOT = True
+
+def game(win_length: int, width: int, height: int, bot_p1: bool = False):
     board = Board(win_length, width, height)
+    BOT_PLAYER = board.p1 if bot_p1 else board.p2
     win = False
     change_turn = False
     tree = BoardTreeNode(board)
@@ -235,7 +237,7 @@ def game(win_length: int, width: int, height: int):
         print("\n" + board.to_string())
         print(f"It is '{board.turn}'s turn.")
         print("Type the number of the column to play in.")
-        if BOT and board.turn == board.p2:
+        if BOT and board.turn == BOT_PLAYER:
             # user_input = get_bot_response(board, board.p2)
             user_input = tree.get_best_pos(False)
         else:
