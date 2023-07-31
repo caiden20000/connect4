@@ -16,10 +16,11 @@ class Board:
     def change_turn(self):
         self.turn = self.p2 if self.turn == self.p1 else self.p1
     def copy_board_list(self) -> list[list[str]]:
-        new_board_list = [[] for _ in range(self.width)]
-        for index1 in enumerate(self.board):
+        new_board_list = []
+        for index1, value1 in enumerate(self.board):
+            new_board_list.append([])
             for index2, value2 in enumerate(self.board[index1]):
-                new_board_list[index1][index2] = value2
+                new_board_list[index1].append(value2)
         return new_board_list
     def copy(self):
         new_board = Board(self.win_length, self.width, self.height)
@@ -131,74 +132,61 @@ class Board:
 class BoardTreeNode:
     def __init__(self, board: Board):
         self.board: Board = board
+        self.turn = self.board.turn
         # Scores are higher for favorable moves.
         # Score is for the player who's turn is on the board.
         self.score: float = 0
         # Index of child board node represents move at that position
-        self.children: list[BoardTreeNode | int] = []
+        self.children: list[BoardTreeNode] = []
         self.up_ratio: float = 0.5
         # If board is final, then either:
         # A. The game is wom, B. The board is full, or
         # C. The board represents an illegal move.
         self.final = False
         self.legal = True
-    def populate(self) -> float:
+    def populate(self, depth: int = 5) -> float:
+        if depth <= 0:
+            self.score = 0
+            return 0
         # For each column you can play a piece in
         for pos in range(self.board.width):
             # Copy the current node board to edit
-            child_board = self.board.copy()
+            new_node = BoardTreeNode(self.board.copy())
             # If move is not legal
-            if child_board.insert_piece(pos) is False:
-                child_board.score = -1
-                child_board.final = True
-                child_board.legal = False
+            if new_node.board.insert_piece(pos) is False:
+                new_node.score = -1
+                new_node.final = True
+                new_node.legal = False
             # If move is a win
-            elif child_board.check_win(pos):
-                child_board.score = 1
-                child_board.final = True
+            elif new_node.board.check_win(pos):
+                new_node.score = 1
+                new_node.final = True
             # If move causes board to fill
-            elif child_board.is_full():
-                child_board.score = -10
-                child_board.final = True
-            # Add the board to a new node for later population or polling.
-            new_node = BoardTreeNode(child_board)
+            elif new_node.board.is_full():
+                new_node.score = -10
+                new_node.final = True
             self.children.append(new_node)
-        # postcondition: self.children are either unpopulated nodes or end conditions ("final")
-        subscore = 0
+        # Recurse to specified depth and add the scores up
         for child in self.children:
             if not child.final:
                 # Child is unsolved board, recurse solve and get score.
                 # Give less points to distant solutions (L + RATIO)
-                subscore += child.populate() * self.up_ratio
+                # Negative is because turns alternate
+                self.score += child.populate(depth - 1) * self.up_ratio * -1
             else:
                 # child is solved board score
-                subscore += child.score
-        self.score = subscore
+                self.score += child.score * -1
         return self.score
-    def get_best_pos(self, for_p1: bool = True) -> int:
+    def get_best_pos(self) -> int:
         # Call after populating
         best_score = None
         best_pos = None
         for pos, child in enumerate(self.children):
-            # child = self.children[pos]
-            # Get the subscore for the pos
-            if isinstance(child, BoardTreeNode):
-                subscore = child.score * self.up_ratio
-            else:
-                subscore = child
-            print(f"iter chil subscr: {subscore}")
+            print(f"iter chil subscr: {child.score}")
             # Default best
-            if best_score is None:
-                best_score = subscore
+            if child.legal and (best_score is None or best_score < child.score):
+                best_score = child.score
                 best_pos = pos
-            else:
-                # "Best" depends on which player is asking
-                if for_p1 and best_score < subscore:
-                    best_score = subscore
-                    best_pos = pos
-                if not for_p1 and best_score > subscore:
-                    best_score = subscore
-                    best_pos = pos
         return best_pos if best_pos is not None else 0
             
             
@@ -235,20 +223,20 @@ def game(win_length: int, width: int, height: int, bot_p1: bool = False):
         print("Type the number of the column to play in.")
         if BOT and board.turn == BOT_PLAYER:
             # user_input = get_bot_response(board, board.p2)
-            user_input = tree.get_best_pos(bot_p1)
+            user_input = tree.get_best_pos()
         else:
             user_input = input()
+        # Catch ValueError from int() casting
         try:
             pos = int(user_input)
             if board.insert_piece(pos):
                 if board.check_win(pos):
                     break
                 if BOT:
-                    if isinstance(tree, BoardTreeNode) and isinstance(tree.children[pos], BoardTreeNode):
-                        tree = typing.cast(BoardTreeNode, tree.children[pos])
+                    tree = tree.children[pos]
             else:
                 print("Can't go there!")
-        except Exception as exception:
+        except ValueError as exception:
             print(f"Bad input! {exception}")
     print(board.to_string())
     print(f"{board.turn} won the game!")
