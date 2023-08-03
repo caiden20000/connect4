@@ -1,9 +1,9 @@
 """Connect 4 implementation in python, command line."""
 import random
 import sys
-import typing
 
 class Board:
+    """Class represents a Connect 4 board."""
     def __init__(self, win_length: int = 4, width: int = 7, height: int = 6):
         self.board: list[list[str]] = [[] for _ in range(width)]
         self.history = ""
@@ -14,8 +14,10 @@ class Board:
         self.p2 = "■"
         self.turn = self.p1
     def change_turn(self):
+        """Switches turn between p1 and p2."""
         self.turn = self.p2 if self.turn == self.p1 else self.p1
     def copy_board_list(self) -> list[list[str]]:
+        """Helper function to copy the 2d list board representation."""
         new_board_list = []
         for index1, value1 in enumerate(self.board):
             new_board_list.append([])
@@ -23,11 +25,13 @@ class Board:
                 new_board_list[index1].append(value2)
         return new_board_list
     def copy(self):
+        """Returns a non-reference copy of the board."""
         new_board = Board(self.win_length, self.width, self.height)
         new_board.history = self.history
         new_board.board = self.copy_board_list()
         return new_board
     def in_board(self, pos: int) -> bool:
+        """Position boundary check. Also considers column height."""
         return (0 <= pos < self.width) and (len(self.board[pos]) < self.height)
     def insert_piece(self, pos: int) -> bool:
         """Returns true if successful, false if not successful."""
@@ -39,6 +43,7 @@ class Board:
         else:
             return False
     def check_win_vertical(self, pos: int) -> bool:
+        """Helper function checks for vertical matches."""
         # If the column is less than win_length pieces high, it's not a win.
         if len(self.board[pos]) < self.win_length:
             return False
@@ -48,6 +53,7 @@ class Board:
                 return False
         return True
     def check_win_horizontal(self, pos: int) -> bool:
+        """Helper function checks for horizontal matches."""
         y = self.get_column_height(pos) - 1
         match_piece = self.get_top_piece(pos)
         # No pieces in pos column means no win
@@ -64,8 +70,8 @@ class Board:
             if matching == self.win_length:
                 return True
         return False
-    
     def check_win_diagonals(self, pos: int) -> bool:
+        """Helper function checks for diagonal matches."""
         y = self.get_column_height(pos) - 1
         match_piece = self.get_top_piece(pos)
         if y < 0 or match_piece is None:
@@ -90,30 +96,36 @@ class Board:
             if dt_matching == self.win_length or td_matching == self.win_length:
                 return True
         return False
-    
     def check_win(self, pos: int) -> bool:
+        """Returns true if the piece at the specified position caused a win."""
         # Check every vertical, horizonta, and diagonal passing through the position
         return self.check_win_vertical(pos) or \
                self.check_win_horizontal(pos) or \
                self.check_win_diagonals(pos)
     def is_full(self) -> bool:
+        """Returns true if there are no possible moves."""
         for column in self.board:
             if len(column) != self.height:
                 return False
         return True
     def get_column_height(self, pos: int) -> int:
+        """Get the number of pieces in a column."""
         return len(self.board[pos])
     def get_top_piece(self, pos: int) -> (str | None):
+        """Get the top piece of a specified position."""
         return self.get_piece_at(pos, self.get_column_height(pos) - 1)
     def get_piece_at(self, pos: int, vert: int) -> (str | None):
+        """Gets the piece at a specified position. Returns None if None."""
         try:
             return self.board[pos][vert]
         except Exception:
             return None
     def get_piece_string(self, pos: int, vert: int) -> str:
+        """Gets the piece at a specified position. Returns ' ' if None."""
         result = self.get_piece_at(pos, vert)
         return result if result is not None else " "
     def to_string(self) -> str:
+        """Returns a string to print the board."""
         result = "│" + "▕▎".join([str(x) for x in range(0, self.width)]) + "│"
         result = "├──" + "───"*(self.width-2) + "──┤\n" + result
         for y in range(self.height):
@@ -132,6 +144,7 @@ class Board:
 # Current consequence of scoring system:
 # An immediate win is not taken because there are less scoring boards behind its branch.
 class BoardTreeNode:
+    """Class represents a board state, with one child node per possible move."""
     def __init__(self, board: Board):
         self.board: Board = board
         # Scores are higher for favorable moves.
@@ -146,8 +159,10 @@ class BoardTreeNode:
         self.final = False
         self.legal = True
     def is_populated(self) -> bool:
+        """Returns true if node has children."""
         return len(self.children) > 0
     def populate(self, depth: int = 5) -> float:
+        """Creates or updates child nodes up to specified depth, returns node score."""
         # End to the depth loop
         if depth <= 0 or self.legal is False:
             self.score = 0
@@ -188,6 +203,7 @@ class BoardTreeNode:
             self.score += child.score * self.up_ratio * -1
         return self.score
     def get_best_pos(self) -> int:
+        """Returns the first highest scoring position for the node."""
         # Call after populating
         best_score = None
         best_pos = None
@@ -198,16 +214,10 @@ class BoardTreeNode:
                 best_score = child.score
                 best_pos = pos
         return best_pos if best_pos is not None else 0
-            
-            
-            
-def get_best_move(board: Board) -> int:
-    tree = BoardTreeNode(board)
-    tree.populate()
-    return tree.get_best_pos()
 
 def get_bot_response(board: Board) -> str:
-    legal = [x for x in range(board.width)]
+    """Chooses a random legal move for the current turn."""
+    legal = list(range(board.width))
     choice = random.choice(legal)
     while board.get_column_height(choice) == board.height:
         legal.remove(choice)
@@ -220,8 +230,9 @@ def get_bot_response(board: Board) -> str:
 BOT = True
 
 def game(win_length: int, width: int, height: int, bot_p1: bool = False):
+    """Main game loop"""
     board = Board(win_length, width, height)
-    BOT_PLAYER = board.p1 if bot_p1 else board.p2
+    bot_player = board.p1 if bot_p1 else board.p2
     win = False
     tree = BoardTreeNode(board)
     if BOT:
@@ -231,7 +242,7 @@ def game(win_length: int, width: int, height: int, bot_p1: bool = False):
         print("\n" + board.to_string())
         print(f"It is '{board.turn}'s turn.")
         print("Type the number of the column to play in.")
-        if BOT and board.turn == BOT_PLAYER:
+        if BOT and board.turn == bot_player:
             # user_input = get_bot_response(board, board.p2)
             user_input = tree.get_best_pos()
         else:
