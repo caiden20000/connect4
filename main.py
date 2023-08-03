@@ -127,62 +127,72 @@ class Board:
         result = f"To win, must get {self.win_length} in a row.\n\n" + result
         result += "\n└──" + "───"*(self.width-2) + "──┘"
         return result
-                    
 
+
+# Current consequence of scoring system:
+# An immediate win is not taken because there are less scoring boards behind its branch.
 class BoardTreeNode:
     def __init__(self, board: Board):
         self.board: Board = board
-        self.turn = self.board.turn
         # Scores are higher for favorable moves.
         # Score is for the player who's turn is on the board.
         self.score: float = 0
         # Index of child board node represents move at that position
         self.children: list[BoardTreeNode] = []
-        self.up_ratio: float = 0.5
+        self.up_ratio: float = 1 / 6
         # If board is final, then either:
         # A. The game is wom, B. The board is full, or
         # C. The board represents an illegal move.
         self.final = False
         self.legal = True
+    def is_populated(self) -> bool:
+        return len(self.children) > 0
     def populate(self, depth: int = 5) -> float:
-        if depth <= 0:
+        # End to the depth loop
+        if depth <= 0 or self.legal is False:
             self.score = 0
             return 0
-        # For each column you can play a piece in
-        for pos in range(self.board.width):
-            # Copy the current node board to edit
-            new_node = BoardTreeNode(self.board.copy())
-            # If move is not legal
-            if new_node.board.insert_piece(pos) is False:
-                new_node.score = -1
-                new_node.final = True
-                new_node.legal = False
-            # If move is a win
-            elif new_node.board.check_win(pos):
-                new_node.score = 1
-                new_node.final = True
-            # If move causes board to fill
-            elif new_node.board.is_full():
-                new_node.score = -10
-                new_node.final = True
-            self.children.append(new_node)
-        # Recurse to specified depth and add the scores up
+        # If this node has children, we're only updating the score
+        if self.is_populated():
+            self.score = 0
+        # If this node doesn't have children, iter thru positions
+        else:
+            # For each column you can play a piece in
+            for pos in range(self.board.width):
+                # Copy the current node board to edit
+                new_node = BoardTreeNode(self.board.copy())
+                # If move is not legal
+                if new_node.board.insert_piece(pos) is False:
+                    new_node.score = 0
+                    new_node.final = True
+                    new_node.legal = False
+                    # print(f"BoardState {new_node.board.history} is illegal.") # DEBUG
+                # If move is a win
+                elif new_node.board.check_win(pos):
+                    new_node.score = 1
+                    new_node.final = True
+                    # print(f"BoardState {new_node.board.history} is a win.") # DEBUG
+                # If move causes board to fill
+                elif new_node.board.is_full():
+                    new_node.score = 0
+                    new_node.final = True
+                    # print(f"BoardState {new_node.board.history} is FULL.") # DEBUG
+                else:
+                    pass
+                    # print(f"BoardState {new_node.board.history} is an unsolved board.") # DEBUG
+                self.children.append(new_node)
+        # Populate children to specified depth and add the scores up
         for child in self.children:
             if not child.final:
-                # Child is unsolved board, recurse solve and get score.
-                # Give less points to distant solutions (L + RATIO)
-                # Negative is because turns alternate
-                self.score += child.populate(depth - 1) * self.up_ratio * -1
-            else:
-                # child is solved board score
-                self.score += child.score * -1
+                child.populate(depth - 1)
+            self.score += child.score * self.up_ratio * -1
         return self.score
     def get_best_pos(self) -> int:
         # Call after populating
         best_score = None
         best_pos = None
         for pos, child in enumerate(self.children):
-            print(f"iter chil subscr: {child.score}")
+            print(f"score for position {pos}: {child.score}")
             # Default best
             if child.legal and (best_score is None or best_score < child.score):
                 best_score = child.score
@@ -234,10 +244,13 @@ def game(win_length: int, width: int, height: int, bot_p1: bool = False):
                     break
                 if BOT:
                     tree = tree.children[pos]
+                    tree.populate()
             else:
                 print("Can't go there!")
         except ValueError as exception:
             print(f"Bad input! {exception}")
+    # insert_piece changes turn so must change turn back to get winner
+    board.change_turn()
     print(board.to_string())
     print(f"{board.turn} won the game!")
 
