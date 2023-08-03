@@ -140,9 +140,8 @@ class Board:
         result += "\n└──" + "───"*(self.width-2) + "──┘"
         return result
 
-
-# Current consequence of scoring system:
-# An immediate win is not taken because there are less scoring boards behind its branch.
+# TODO: The scoring system super doesn't work. Figure out
+#       what the system SHOULD do, then figure out HOW.
 class BoardTreeNode:
     """Class represents a board state, with one child node per possible move."""
     def __init__(self, board: Board):
@@ -181,20 +180,14 @@ class BoardTreeNode:
                     new_node.score = 0
                     new_node.final = True
                     new_node.legal = False
-                    # print(f"BoardState {new_node.board.history} is illegal.") # DEBUG
                 # If move is a win
                 elif new_node.board.check_win(pos):
                     new_node.score = 1
                     new_node.final = True
-                    # print(f"BoardState {new_node.board.history} is a win.") # DEBUG
                 # If move causes board to fill
                 elif new_node.board.is_full():
                     new_node.score = 0
                     new_node.final = True
-                    # print(f"BoardState {new_node.board.history} is FULL.") # DEBUG
-                else:
-                    pass
-                    # print(f"BoardState {new_node.board.history} is an unsolved board.") # DEBUG
                 self.children.append(new_node)
         # Populate children to specified depth and add the scores up
         for child in self.children:
@@ -267,7 +260,7 @@ def game(win_length: int, width: int, height: int, bot_p1: bool = False):
 
 def main():
     """Function called when this file is executed."""
-    if len(sys.argv) not in [1, 4]:
+    if len(sys.argv) not in (1, 4):
         print("Usage: python main.py <connect X> <width> <height>")
         print("Default params: python main.py 4 7 6")
         quit()
